@@ -78,8 +78,6 @@ class ReflexAgent(Agent):
         ghostPos = [(G.getPosition()[0], G.getPosition()[1]) for G in newGhostStates]
         scared = min(newScaredTimes) > 0
 
-        # if not new ScaredTimes new state is ghost: return lowest value
-
         if not scared and (newPos in ghostPos):
             return -1.0
 
@@ -147,6 +145,42 @@ class MinimaxAgent(MultiAgentSearchAgent):
             Returns the total number of agents in the game
         """
         "*** YOUR CODE HERE ***"
+        GhostIndex = [i for i in range(1, gameState.getNumAgents())]
+
+        def term(state, d):
+            return state.isWin() or state.isLose() or d == self.depth
+
+        def min_value(state, d, ghost):  # minimizer
+
+            if term(state, d):
+                return self.evaluationFunction(state)
+
+            v = 10000000000000000
+            for action in state.getLegalActions(ghost):
+                if ghost == GhostIndex[-1]:
+                    v = min(v, max_value(state.generateSuccessor(ghost, action), d + 1))
+                else:
+                    v = min(v, min_value(state.generateSuccessor(ghost, action), d, ghost + 1))
+            # print(v)
+            return v
+
+        def max_value(state, d):  # maximizer
+
+            if term(state, d):
+                return self.evaluationFunction(state)
+
+            v = -10000000000000000
+            for action in state.getLegalActions(0):
+                v = max(v, min_value(state.generateSuccessor(0, action), d, 1))
+            # print(v)
+            return v
+
+        res = [(action, min_value(gameState.generateSuccessor(0, action), 0, 1)) for action in
+               gameState.getLegalActions(0)]
+        res.sort(key=lambda k: k[1])
+
+        return res[-1][0]
+
         util.raiseNotDefined()
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
@@ -159,6 +193,67 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
+        GhostIndex = [i for i in range(1, gameState.getNumAgents())]
+        inf = 1e100
+
+        def term(state, d):
+            return state.isWin() or state.isLose() or d == self.depth
+
+        def min_value(state, d, ghost, A, B):  # minimizer
+
+            if term(state, d):
+                return self.evaluationFunction(state)
+
+            v = inf
+            for action in state.getLegalActions(ghost):
+                if ghost == GhostIndex[-1]:  # next is maximizer with pacman
+                    v = min(v, max_value(state.generateSuccessor(ghost, action), d + 1, A, B))
+                else:  # next is minimizer with next-ghost
+                    v = min(v, min_value(state.generateSuccessor(ghost, action), d, ghost + 1, A, B))
+
+                if v < A:
+                    return v
+                B = min(B, v)
+
+            return v
+
+        def max_value(state, d, A, B):  # maximizer
+
+            if term(state, d):
+                return self.evaluationFunction(state)
+
+            v = -inf
+            for action in state.getLegalActions(0):
+                v = max(v, min_value(state.generateSuccessor(0, action), d, 1, A, B))
+
+                if v > B:
+                    return v
+                A = max(A, v)
+
+            return v
+
+        def alphabeta(state):
+
+            v = -inf
+            act = None
+            A = -inf
+            B = inf
+
+            for action in state.getLegalActions(0):  # maximizing
+                tmp = min_value(gameState.generateSuccessor(0, action), 0, 1, A, B)
+
+                if v < tmp:  # same as v = max(v, tmp)
+                    v = tmp
+                    act = action
+
+                if v > B:  # pruning
+                    return v
+                A = max(A, tmp)
+
+            return act
+
+        return alphabeta(gameState)
+
         util.raiseNotDefined()
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
